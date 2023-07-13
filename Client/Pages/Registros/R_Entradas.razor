@@ -1,0 +1,39 @@
+@page "/RegistroEntradas"
+@page "/RegistroEntradas/{EntradaId:int}"
+@inject HttpClient httpClient
+@inject NotificationService notificationService
+
+<EditForm Model="Entradas" OnValidSubmit="Guardar">
+    <DataAnnotationsValidator />
+    <div class="card">
+        <div class="card-header">
+            <h1>Registro de Entradas</h1>
+        </div>
+    </div>
+</EditForm>
+
+@code
+{
+    [Parameter]
+    public int EntradaId { get; set; }
+    public Entradas Entradas { get; set; } = new Entradas();
+    public string Mensaje { get; set; } = string.Empty;
+  
+    public async void Guardar()
+    {
+        using var response = await httpClient.PostAsJsonAsync("api/Entradas", Entradas);
+        if (!response.IsSuccessStatusCode)
+        {
+            Mensaje = response.ReasonPhrase ?? "error";
+            return;
+        }
+        var EntradaDevuelta = await response.Content.ReadFromJsonAsync<Entradas>();
+        if (EntradaDevuelta is not null)
+        {
+            Entradas = EntradaDevuelta;
+            StateHasChanged();
+        }
+    }
+}
+
+
