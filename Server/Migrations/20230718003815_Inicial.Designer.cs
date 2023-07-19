@@ -10,7 +10,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Parcial2_Nathaly.Server.Migrations
 {
     [DbContext(typeof(Context))]
-    [Migration("20230711045405_Inicial")]
+    [Migration("20230718003815_Inicial")]
     partial class Inicial
     {
         /// <inheritdoc />
@@ -63,6 +63,8 @@ namespace Parcial2_Nathaly.Server.Migrations
 
                     b.HasKey("DetalleId");
 
+                    b.HasIndex("EntradaId");
+
                     b.ToTable("EntradasDetalle");
                 });
 
@@ -78,12 +80,32 @@ namespace Parcial2_Nathaly.Server.Migrations
                     b.Property<int>("Existencia")
                         .HasColumnType("INTEGER");
 
+                    b.Property<double>("PrecioCompra")
+                        .HasColumnType("REAL");
+
+                    b.Property<double>("PrecioVenta")
+                        .HasColumnType("REAL");
+
                     b.Property<int>("Tipo")
                         .HasColumnType("INTEGER");
 
                     b.HasKey("ProductoId");
 
                     b.ToTable("Productos");
+                });
+
+            modelBuilder.Entity("EntradasDetalle", b =>
+                {
+                    b.HasOne("Entradas", null)
+                        .WithMany("EntradasDetalle")
+                        .HasForeignKey("EntradaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Entradas", b =>
+                {
+                    b.Navigation("EntradasDetalle");
                 });
 #pragma warning restore 612, 618
         }
