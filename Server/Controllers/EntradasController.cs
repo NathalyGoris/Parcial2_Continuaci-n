@@ -45,56 +45,96 @@ public class EntradasController : ControllerBase
     }
 
     [HttpPost]
-    public async Task<ActionResult<Entradas>> PostEntradas(Entradas entradas)
-    {
-        if (!EntradasExiste(entradas.EntradaId))
+        public async Task<ActionResult<Entradas>> PostEntradas(Entradas entradas)
         {
-            foreach (var utilizado in entradas.EntradasDetalle)
+            if (!EntradasExiste(entradas.EntradaId))
             {
-                var producto = _context.Productos.Find(utilizado.ProductoId);
-                producto.Existencia -= (int)utilizado.CantidadUtilizada;
-                _context.Entry(producto).State = EntityState.Modified;
-            }
+                Productos? producto = new Productos();
+                foreach (var Consumido in entradas.EntradasDetalle)
+                {
+                    producto = _context.Productos.Find(Consumido.ProductoId);
 
-            _context.Entradas.Add(entradas);
-        }
-        else
-        {
-            var entradaAnterior = _context.Entradas
-                .Include(e => e.EntradasDetalle)
-                .AsNoTracking()
+                    if (producto != null)
+                    {
+                        producto.Existencia -= Consumido.CantidadUtilizada;
+                        _context.Productos.Update(producto);
+                        await _context.SaveChangesAsync();
+                        _context.Entry(producto).State = EntityState.Detached;
+                    }
+                }
+                await _context.Entradas.AddAsync(entradas);
+            }
+            else
+            {
+                var entradaAnterior = _context.Entradas.Include(e => e.EntradasDetalle).AsNoTracking()
                 .FirstOrDefault(e => e.EntradaId == entradas.EntradaId);
 
-            foreach (var consumido in entradaAnterior.EntradasDetalle)
-            {
-                var producto = _context.Productos.Find(consumido.ProductoId);
-                producto.Existencia += (int)consumido.CantidadUtilizada;
-                _context.Entry(producto).State = EntityState.Modified;
+                Productos? producto = new Productos();
+
+                if (entradaAnterior != null && entradaAnterior.EntradasDetalle != null)
+                {
+                    foreach (var productoConsumido in entradaAnterior.EntradasDetalle)
+                    {
+                        if (productoConsumido != null)
+                        {
+                            producto = _context.Productos.Find(productoConsumido.ProductoId);
+
+                            if (producto != null)
+                            {
+                                producto.Existencia += productoConsumido.CantidadUtilizada;
+                                _context.Productos.Update(producto);
+                                await _context.SaveChangesAsync();
+                                _context.Entry(producto).State = EntityState.Detached;
+                            }
+                        }
+                    }
+                }
+
+                if (entradaAnterior != null)
+                {
+                    producto = _context.Productos.Find(entradaAnterior.ProductoId);
+
+                    if (producto != null)
+                    {
+                        producto.Existencia -= entradaAnterior.CantidadProducida;
+                        _context.Productos.Update(producto);
+                        await _context.SaveChangesAsync();
+                        _context.Entry(producto).State = EntityState.Detached;
+                    }
+                }
+
+                _context.Database.ExecuteSqlRaw($"Delete from entradasDetalle where EntradaId = {entradas.EntradaId}");
+
+                foreach (var productoConsumido in entradas.EntradasDetalle)
+                {
+                    producto = _context.Productos.Find(productoConsumido.ProductoId);
+
+                    if (producto != null)
+                    {
+                        producto.Existencia -= productoConsumido.CantidadUtilizada;
+                        _context.Productos.Update(producto);
+                        await _context.SaveChangesAsync();
+                        _context.Entry(producto).State = EntityState.Detached;
+                        _context.Entry(productoConsumido).State = EntityState.Added;
+                    }
+                }
+
+                producto = _context.Productos.Find(entradas.ProductoId);
+
+                if (producto != null)
+                {
+                    producto.Existencia += entradas.CantidadProducida;
+                    _context.Productos.Update(producto);
+                    await _context.SaveChangesAsync();
+                    _context.Entry(producto).State = EntityState.Detached;
+                }
+                _context.Entradas.Update(entradas);
             }
 
-            var productoEntradaAnterior = _context.Productos.Find(entradaAnterior.ProductoId);
-            productoEntradaAnterior.Existencia -= entradaAnterior.CantidadProducida;
-            _context.Entry(productoEntradaAnterior).State = EntityState.Modified;
-            _context.Database.ExecuteSqlRaw($"Delete from EntradasDetalles where EntradaId = {entradas.EntradaId}");
-
-            foreach (var consumido in entradas.EntradasDetalle)
-            {
-                var producto = _context.Productos.Find(consumido.ProductoId);
-                producto.Existencia -= (int)consumido.CantidadUtilizada;
-                _context.Entry(producto).State = EntityState.Modified;
-                _context.Entry(consumido).State = EntityState.Added;
-            }
-
-            var productoEntradaActual = _context.Productos.Find(entradas.ProductoId);
-            productoEntradaActual.Existencia += entradas.CantidadProducida;
-            _context.Entry(productoEntradaActual).State = EntityState.Modified;
-            _context.Entradas.Update(entradas);
+            await _context.SaveChangesAsync();
+            _context.Entry(entradas).State = EntityState.Detached;
+            return Ok(entradas);
         }
-
-        await _context.SaveChangesAsync();
-        _context.Entry(entradas).State = EntityState.Detached;
-        return Ok(entradas);
-    }
 
 
     [HttpDelete("{EntradaId}")]
