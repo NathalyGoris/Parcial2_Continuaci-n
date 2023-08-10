@@ -3,6 +3,8 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
+#pragma warning disable CA1814 // Prefer jagged arrays over multidimensional
+
 namespace Parcial2_Nathaly.Server.Migrations
 {
     /// <inheritdoc />
@@ -64,6 +66,20 @@ namespace Parcial2_Nathaly.Server.Migrations
                         principalTable: "Entradas",
                         principalColumn: "EntradaId",
                         onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.InsertData(
+                table: "Productos",
+                columns: new[] { "ProductoId", "Descripcion", "Existencia", "PrecioCompra", "PrecioVenta", "Tipo" },
+                values: new object[,]
+                {
+                    { 1, "Mani", 100, 5.0, 10.0, 0 },
+                    { 2, "Pistachos", 200, 10.0, 20.0, 0 },
+                    { 3, "Pasas", 250, 5.0, 10.0, 0 },
+                    { 4, "Ciruelas", 350, 25.0, 50.0, 0 },
+                    { 5, "Mixto MPP 0.5 lb", 20, 0.0, 75.0, 0 },
+                    { 6, "Mixto MPC 0.5 lb", 50, 0.0, 100.0, 0 },
+                    { 7, "Mixto MPP 0.2 lb", 103, 0.0, 30.0, 0 }
                 });
 
             migrationBuilder.CreateIndex(

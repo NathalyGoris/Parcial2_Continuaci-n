@@ -1,165 +1,134 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Text.RegularExpressions;
 
-
-    [Route("api/[controller]")]
-    [ApiController]
-
-    public class EntradasController : ControllerBase
-    {
-        private readonly Context _context;
-
-        public EntradasController(Context context)
-        {
-            _context = context;
-        }
-
-        public bool Existe(int EntradaId)
-        {
-            return (_context.Entradas?.Any(e => e.EntradaId == EntradaId)).GetValueOrDefault();
-        }
-
-        [HttpGet]
-        public async Task<ActionResult<IEnumerable<Entradas>>> Obtener()
-        {
-            if(_context.Entradas == null)
-            {
-                return NotFound();
-            }
-            else
-            {
-                return await _context.Entradas.ToListAsync();
-            }
-        }
-
-        [HttpGet("{EntradaId}")]
-        public async Task<ActionResult<Entradas>> ObtenerEntradas(int EntradaId)
-        {
-            if(_context.Entradas == null)
-            {
-                return NotFound();
-            }
-
-            var entrada = await _context.Entradas.Include(e => e.EntradasDetalle).Where( e => e.EntradaId == EntradaId).FirstOrDefaultAsync();
-
-            if(entrada == null)
-            {
-                return NotFound();
-            }
-
-            foreach(var item in entrada.EntradasDetalle)
-            {
-                Console.WriteLine($"{item.DetalleId}, {item.EntradaId}, {item.ProductoId}, {item.CantidadUtilizada}");
-            }
-
-            return entrada;
-        }
-        
-        public async Task<ActionResult<Entradas>> PostEntradas(Entradas entradas)
+[Route("api/[controller]")]
+[ApiController]
+public class EntradasController : ControllerBase
 {
-    foreach (var productoConsumido in entradas.EntradasDetalle)
+    private readonly Context _context;
+    public EntradasController(Context context)
     {
-        var producto = _context.Productos.Find(productoConsumido.ProductoId);
-
-        if (producto != null)
-        {
-            producto.Existencia -= productoConsumido.CantidadUtilizada;
-            _context.Productos.Update(producto);
-        }
+       _context = context;
     }
 
-    if (Existe(entradas.EntradaId))
+    [HttpGet]
+    public async Task<ActionResult<IEnumerable<Entradas>>> GetEntradas()
     {
-        var entradaAnterior = _context.Entradas
-            .Include(e => e.EntradasDetalle)
-            .AsNoTracking()
-            .FirstOrDefault(e => e.EntradaId == entradas.EntradaId);
-
-        if (entradaAnterior != null && entradaAnterior.EntradasDetalle != null)
+        if (_context.Entradas == null)
         {
-            foreach (var productoConsumido in entradaAnterior.EntradasDetalle)
+            return NotFound();
+        }
+        return await _context.Entradas.ToListAsync();
+    }
+
+    [HttpGet("{id}")]
+
+        public async Task<ActionResult<Entradas>> GetEntradas(int id)
+        {
+            if (_context.Entradas == null)
             {
-                var producto = _context.Productos.Find(productoConsumido.ProductoId);
-
-                if (producto != null)
-                {
-                    producto.Existencia += productoConsumido.CantidadUtilizada;
-                    _context.Productos.Update(producto);
-                }
+                return NotFound();
             }
-        }
-
-        if (entradaAnterior != null)
-        {
-            var producto = _context.Productos.Find(entradaAnterior.ProductoId);
-
-            if (producto != null)
-            {
-                producto.Existencia -= entradaAnterior.CantidadProducida;
-                _context.Productos.Update(producto);
-            }
-        }
-
-        _context.Database.ExecuteSqlRaw($"Delete from entradasDetalle where EntradaId = {entradas.EntradaId}");
-    }
-
-    var productoActual = _context.Productos.Find(entradas.ProductoId);
-
-    if (productoActual != null)
-    {
-        productoActual.Existencia += entradas.CantidadProducida;
-        _context.Productos.Update(productoActual);
-    }
-
-    if (!Existe(entradas.EntradaId))
-    {
-        await _context.Entradas.AddAsync(entradas);
-    }
-    else
-    {
-        _context.Entradas.Update(entradas);
-    }
-
-    await _context.SaveChangesAsync();
-    return Ok(entradas);
-}
-
-
-        [HttpDelete("{EntradaId}")]
-        public async Task<IActionResult> EliminarEntrada(int EntradaId)
-        {
-            var entrada = await _context.Entradas.Include(e => e.EntradasDetalle).FirstOrDefaultAsync(e => e.EntradaId == EntradaId);
-
+            var entrada = await _context.Entradas.Include(e => e.EntradasDetalle).Where(e => e.EntradaId == id).FirstOrDefaultAsync();
             if (entrada == null)
             {
                 return NotFound();
             }
-
-            foreach (var productoConsumido in entrada.EntradasDetalle)
-            {
-                var producto = await _context.Productos.FindAsync(productoConsumido.ProductoId);
-
-                if (producto != null)
-                {
-                    producto.Existencia += productoConsumido.CantidadUtilizada;
-                    _context.Productos.Update(producto);
-                }
-            }
-
-            var productoInicial = await _context.Productos.FindAsync(entrada.ProductoId);
-
-            if (productoInicial != null)
-            {
-                productoInicial.Existencia += entrada.CantidadProducida;
-                _context.Productos.Update(productoInicial);
-            }
-
-            _context.Entradas.Remove(entrada);
-            await _context.SaveChangesAsync();
-
-            return NoContent();
+            return entrada;
         }
-        
-  }
-  
+
+    public bool EntradasExiste(int id)
+    {
+        return (_context.Entradas?.Any(e => e.EntradaId == id)).GetValueOrDefault();
+    }
+
+    [HttpPost]
+    public async Task<ActionResult<Entradas>> PostEntradas(Entradas entradas)
+    {
+        if (!EntradasExiste(entradas.EntradaId))
+        {
+            foreach (var utilizado in entradas.EntradasDetalle)
+            {
+                var producto = _context.Productos.Find(utilizado.ProductoId);
+                producto.Existencia -= (int)utilizado.CantidadUtilizada;
+                _context.Entry(producto).State = EntityState.Modified;
+            }
+
+            _context.Entradas.Add(entradas);
+        }
+        else
+        {
+            var entradaAnterior = _context.Entradas
+                .Include(e => e.EntradasDetalle)
+                .AsNoTracking()
+                .FirstOrDefault(e => e.EntradaId == entradas.EntradaId);
+
+            foreach (var consumido in entradaAnterior.EntradasDetalle)
+            {
+                var producto = _context.Productos.Find(consumido.ProductoId);
+                producto.Existencia += (int)consumido.CantidadUtilizada;
+                _context.Entry(producto).State = EntityState.Modified;
+            }
+
+            var EntradaAnterior = _context.Productos.Find(entradaAnterior.ProductoId);
+            EntradaAnterior.Existencia -= entradaAnterior.CantidadProducida;
+            _context.Entry(EntradaAnterior).State = EntityState.Modified;
+            _context.Database.ExecuteSqlRaw($"Delete from EntradasDetalles where EntradaId = {entradas.EntradaId}");
+
+            foreach (var consumido in entradas.EntradasDetalle)
+            {
+                var producto = _context.Productos.Find(consumido.ProductoId);
+                producto.Existencia -= (int)consumido.CantidadUtilizada;
+                _context.Entry(producto).State = EntityState.Modified;
+                _context.Entry(consumido).State = EntityState.Added;
+            }
+
+            var EntradaActual = _context.Productos.Find(entradas.ProductoId);
+            EntradaActual.Existencia += entradas.CantidadProducida;
+            _context.Entry(EntradaActual).State = EntityState.Modified;
+            _context.Entradas.Update(entradas);
+        }
+
+        await _context.SaveChangesAsync();
+        _context.Entry(entradas).State = EntityState.Detached;
+        return Ok(entradas);
+    }
+
+
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> EliminarEntrada(int EntradaId)
+    {
+        var entrada = await _context.Entradas.Include(e => e.EntradasDetalle).FirstOrDefaultAsync(e => e.EntradaId == EntradaId);
+
+        if (entrada == null)
+        {
+            return NotFound();
+        }
+
+        foreach (var detalle in entrada.EntradasDetalle)
+        {
+            var productos = await _context.Productos.FindAsync(detalle.ProductoId);
+
+            if (productos != null)
+            {
+                productos.Existencia += (int)detalle.CantidadUtilizada;
+                _context.Productos.Update(productos);
+            }
+        }
+
+        var producto = await _context.Productos.FindAsync(entrada.ProductoId);
+
+        if (producto != null)
+        {
+            producto.Existencia += entrada.CantidadProducida;
+            _context.Productos.Update(producto);
+        }
+
+        _context.Entradas.Remove(entrada);
+        await _context.SaveChangesAsync();
+
+        return NoContent();
+    }
+}

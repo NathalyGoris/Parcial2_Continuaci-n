@@ -31,10 +31,10 @@ public class EntradasDetalle
     [Key]
     public int DetalleId { get; set; }
 
-     [ForeignKey("EntradaId")]
+    [ForeignKey("EntradaId")]
     public int EntradaId { get; set; }
 
-     [ForeignKey("ProductoId")]
+    [ForeignKey("ProductoId")]
     public int ProductoId { get; set; }
 
     [Required (ErrorMessage = "La cantidad utilizada es obligatoria")]

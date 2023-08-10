@@ -89,6 +89,71 @@ namespace Parcial2_Nathaly.Server.Migrations
                     b.HasKey("ProductoId");
 
                     b.ToTable("Productos");
+
+                    b.HasData(
+                        new
+                        {
+                            ProductoId = 1,
+                            Descripcion = "Mani",
+                            Existencia = 100,
+                            PrecioCompra = 5.0,
+                            PrecioVenta = 10.0,
+                            Tipo = 0
+                        },
+                        new
+                        {
+                            ProductoId = 2,
+                            Descripcion = "Pistachos",
+                            Existencia = 200,
+                            PrecioCompra = 10.0,
+                            PrecioVenta = 20.0,
+                            Tipo = 0
+                        },
+                        new
+                        {
+                            ProductoId = 3,
+                            Descripcion = "Pasas",
+                            Existencia = 250,
+                            PrecioCompra = 5.0,
+                            PrecioVenta = 10.0,
+                            Tipo = 0
+                        },
+                        new
+                        {
+                            ProductoId = 4,
+                            Descripcion = "Ciruelas",
+                            Existencia = 350,
+                            PrecioCompra = 25.0,
+                            PrecioVenta = 50.0,
+                            Tipo = 0
+                        },
+                        new
+                        {
+                            ProductoId = 5,
+                            Descripcion = "Mixto MPP 0.5 lb",
+                            Existencia = 20,
+                            PrecioCompra = 0.0,
+                            PrecioVenta = 75.0,
+                            Tipo = 0
+                        },
+                        new
+                        {
+                            ProductoId = 6,
+                            Descripcion = "Mixto MPC 0.5 lb",
+                            Existencia = 50,
+                            PrecioCompra = 0.0,
+                            PrecioVenta = 100.0,
+                            Tipo = 0
+                        },
+                        new
+                        {
+                            ProductoId = 7,
+                            Descripcion = "Mixto MPP 0.2 lb",
+                            Existencia = 103,
+                            PrecioCompra = 0.0,
+                            PrecioVenta = 30.0,
+                            Tipo = 0
+                        });
                 });
 
             modelBuilder.Entity("EntradasDetalle", b =>

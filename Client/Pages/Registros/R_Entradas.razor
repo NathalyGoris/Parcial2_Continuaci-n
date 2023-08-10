@@ -1,5 +1,5 @@
 @page "/RegistroEntradas"
-@page "/RegistroEntradass/{EntradaId:int}"
+@page "/RegistroEntradas/{EntradaId:int}"
 @inject HttpClient httpClient
 @inject NotificationService notificationServices
 
@@ -88,7 +88,7 @@
             <hr />
             <div class="card">
                 <div class="card-header">
-                    <h1>Productos</h1>
+                    <h1>Producidos</h1>
                 </div>
                 <div class="row">
                     <div class="col-3">
@@ -114,9 +114,9 @@
                     Guardar <i class="oi oi-document"></i>
                 </button>
                 <button type="button" class="btn btn-outline-danger" @onclick="Eliminar">
-                    Eliminar <i class="oi oi-trash"></i>
+                    Eliminar <i class="oi oi-trash" />
                 </button>
-            </div>
+                </div>
         </div>
     </div>
 </EditForm>
@@ -126,8 +126,8 @@
 {
     [Parameter]
     public int EntradaId { get; set; }
+    public int productoId { get; set; }
     public Entradas Entradas { get; set; } = new Entradas();
-    public Productos productos { get; set; } = new Productos();
     public EntradasDetalle EntradasDetalle { get; set; } = new EntradasDetalle();
     public List<Productos> L_Productos { get; set; } = new List<Productos>();
     public int Total { get; set; } = 0;
@@ -159,27 +159,35 @@
         Total = 0;
         notificationServices.ShowNotification(titulo: "Listo", mensaje: "Se ha limpiado correctamente", NotificationSeverity.Info);
     }
-    public async Task<bool> Buscar()
+     public async Task Buscar()
     {
         try
         {
-            var entradaEncontrada = await httpClient.GetFromJsonAsync<Entradas>($"api/Entradas/{Entradas.EntradaId}");
-
-            if (entradaEncontrada != null)
+            int Suma = 0;
+            var buscar = await httpClient.GetFromJsonAsync<Entradas>($"api/Entradas/{Entradas.EntradaId}");
+            if (buscar != null)
             {
-                Entradas = entradaEncontrada;
-                Total = Entradas.EntradasDetalle.Sum(item => item.CantidadUtilizada);
-                StateHasChanged();
-                notificationServices.ShowNotification("Encontrado", "La entrada se ha encontrado con éxito", NotificationSeverity.Info);
-                return true;
+                this.Entradas = buscar;
             }
-
-            return false;
+            else
+            {
+                notificationServices.ShowNotification(
+                    titulo: "Error",
+                    mensaje: "Registro no encontrado",
+                    NotificationSeverity.Error);
+            }
+            foreach (var item in Entradas.EntradasDetalle)
+            {
+                Suma += (int)item.CantidadUtilizada;
+                Total = Suma;
+            }
         }
-        catch
+        catch (Exception ex)
         {
-            notificationServices.ShowNotification("Error", "No se ha podido encontrar la entrada", NotificationSeverity.Warning);
-            return false;
+            notificationServices.ShowNotification(
+                titulo: "Error",
+                mensaje: ex.Message,
+                NotificationSeverity.Error);
         }
     }
 
@@ -196,46 +204,67 @@
     }
 
     public bool Validar()
-{
-    return !string.IsNullOrEmpty(Entradas.Concepto)
-        && Entradas.ProductoId >= 0
-        && Entradas.CantidadProducida >= 0;
-}
-
-
-    public bool ValidarDetalle()
-{
-    return EntradasDetalle.ProductoId >= 0
-        && EntradasDetalle.CantidadUtilizada >= 0;
-}
-
+    {
+        if (string.IsNullOrEmpty(Entradas.Concepto))
+        {
+            return false;
+        }
+        if (Entradas.PesoTotal < 0)
+        {
+            return false;
+        }
+        if (Entradas.ProductoId < 0)
+        {
+            return false;
+        }
+        if (Entradas.CantidadProducida < 0)
+        {
+            return false;
+        }
+        else
+        {
+            return true;
+        }
+    }
+     public bool ValidarDetalle()
+    {
+        if (EntradasDetalle.ProductoId < 0)
+        {
+            return false;
+        }
+        if (EntradasDetalle.CantidadUtilizada < 0)
+        {
+            return false;
+        }
+        else
+        {
+            return true;
+        }
+    }
 
     public async Task Guardar()
     {
-        Entradas.EntradasDetalle = Entradas.EntradasDetalle.ToList();
-        using var response = await httpClient.PostAsJsonAsync("api/Entradas", Entradas);
-
-        if (Validar())
+        try
         {
-            if (response.IsSuccessStatusCode)
-            {
-                var entradaDevuelta = await response.Content.ReadFromJsonAsync<Entradas>();
+            using var response = await httpClient.PostAsJsonAsync("api/Entradas", Entradas);
+            response.EnsureSuccessStatusCode();
 
-                if (entradaDevuelta != null)
-                {
-                    Entradas = entradaDevuelta;
-                    Nuevo();
-                    notificationServices.ShowNotification("Guardado", "El producto se ha guardado con éxito", NotificationSeverity.Success);
-                }
-                else
-                {
-                    notificationServices.ShowNotification("Error", "Ingrese un código existente", NotificationSeverity.Error);
-                }
-            }
-            else
+            var entradaDevuelta = await response.Content.ReadFromJsonAsync<Entradas>();
+            if (entradaDevuelta != null)
             {
-                notificationServices.ShowNotification("Error", "Verifique e inténtelo de nuevo", NotificationSeverity.Error);
+                notificationServices.ShowNotification(
+                    titulo: "Éxito",
+                    mensaje: "Guardado correctamente",
+                    NotificationSeverity.Success);
+                this.Entradas = entradaDevuelta;
             }
+        }
+        catch (Exception ex)
+        {
+            notificationServices.ShowNotification(
+                titulo: "No se pudo guardar, intentelo de nuevo",
+                mensaje: ex.Message,
+                NotificationSeverity.Error);
         }
     }
 
@@ -248,55 +277,68 @@
         {
             if (!response.IsSuccessStatusCode)
             {
-                notificationServices.ShowNotification("Error", "No se ha podido eliminar", NotificationSeverity.Warning);
+
+                notificationServices.ShowNotification(
+                    titulo: "Error ",
+                    mensaje: "No se pudo eliminar",
+                    NotificationSeverity.Error);
+                return;
             }
             else
             {
                 Nuevo();
-                notificationServices.ShowNotification("Eliminado", "Se ha eliminado con éxito", NotificationSeverity.Error);
             }
         }
     }
    
-    
-
-public async Task AgregarDetalle()
-{
-    if (ValidarDetalle())
+   public void EliminarDetalle(EntradasDetalle entradasDetalle)
     {
-        if (EntradasDetalle.CantidadUtilizada <= 0)
-        {
-            notificationServices.ShowNotification("Error", "Debe ingresar una cantidad mayor que 0", NotificationSeverity.Warning);
-            return;
-        }
+        this.Entradas.EntradasDetalle.Remove(entradasDetalle);
 
-        var producto = await BuscarEntradas(EntradasDetalle.ProductoId);
+        Total = this.Entradas.EntradasDetalle.Sum(t => (int)t.CantidadUtilizada);
+        Entradas.CantidadProducida = Total * 2;
+    } 
 
-        if (producto != null)
+    public async Task AgregarDetalle()
+    {
+        if (ValidarDetalle())
         {
-            if (EntradasDetalle.CantidadUtilizada > producto.Existencia)
+            if (EntradasDetalle.CantidadUtilizada <= 0)
             {
-                notificationServices.ShowNotification("Error", "Por favor ingrese una cantidad menor que la existencia del producto", NotificationSeverity.Warning);
+                notificationServices.ShowNotification(
+                titulo: "Error", 
+                mensaje: "Debe utilizar una cantidad mayor a cero", 
+                NotificationSeverity.Warning);
                 return;
             }
 
-            EntradasDetalle.EntradaId = Entradas.EntradaId;
-            Entradas.EntradasDetalle.Add(EntradasDetalle);
-            EntradasDetalle = new EntradasDetalle();
+            var producto = await BuscarEntradas(EntradasDetalle.ProductoId);
 
-            Total = Entradas.EntradasDetalle.Sum(item => item.CantidadUtilizada);
-            Entradas.CantidadProducida = Total * 2;
+            if (Entradas != null)
+            {
+                int Suma = 0;
+
+                if (EntradasDetalle.CantidadUtilizada > producto.Existencia)
+                {
+                    notificationServices.ShowNotification(
+                    titulo: "Error", 
+                    mensaje: "Ha utilizado una cantidad mayor que la existencia del producto", 
+                    NotificationSeverity.Warning);
+                    return;
+                }
+
+                EntradasDetalle.EntradaId = Entradas.EntradaId;
+                Entradas.EntradasDetalle.Add(EntradasDetalle);
+                EntradasDetalle = new EntradasDetalle();
+
+                foreach (var item in Entradas.EntradasDetalle)
+                {
+                    Suma += (int)item.CantidadUtilizada;
+                    Total = Suma;
+                }
+                Entradas.CantidadProducida = Total * 2;
+            }
         }
-    }
-}
-
-
-    public void EliminarDetalle(EntradasDetalle detalle)
-    {
-        Entradas.EntradasDetalle.Remove(detalle);
-
-        Total = Entradas.EntradasDetalle.Sum(t => t.CantidadUtilizada);
-        Entradas.CantidadProducida = Total * 2;
     }
 
     public string ObtenerDescripcion(int Id)
