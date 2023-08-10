@@ -1,0 +1,79 @@
+@page "/ConsultaProductos"
+@inject HttpClient httpClient
+
+
+<EditForm Model="L_Productos">
+
+    <div class="container">
+        <div class="card shadow-lg">
+            <div class="card-header">
+                <h4>Consulta de Productos</h4>
+            </div>
+
+            <div class="card-body">
+                <div class="input-group">
+                    <InputNumber @bind-Value="productos.ProductoId" class="form-control"></InputNumber>
+                    <button type="button" class="btn btn-outline-primary oi oi-magnifying-glass" @onclick="Buscar"></button>
+                </div>
+
+                <table class="table table-responsive table-condensed table-bordered table-striped table-hover">
+                    <thead>
+                        <tr>
+                            <th>Producto ID</th>
+                            <th>Descripcion</th>
+                            <th>Precio Compra</th>
+                            <th>Precio Venta</th>
+                            <th>Existencia</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var producto in L_Productos)
+                        {
+                            <tr>
+                                <th>@producto.ProductoId</th>
+                                <th>@producto.Descripcion</th>
+                                <th>@producto.PrecioCompra</th>
+                                <th>@producto.PrecioVenta</th>
+                                <th>@producto.Existencia</th>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="card-footer">
+                <div class="form-row justify-content-sm-between" aria-orientation="vertical">
+                    <div class="col-3">
+                        <label for="CantidaRegistro" class="col-form-label"><strong>Filas</strong>&nbsp;</label>
+                        <input id="CantidaRegistro" @bind-value="@Conteo" disabled class="form-control" />
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</EditForm>
+
+@code
+{
+    public int Conteo { get; set; }
+    public Productos productos { get; set; } = new Productos();
+    public List<Productos> L_Productos { get; set; } = new List<Productos>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var productos = await httpClient.GetFromJsonAsync<List<Productos>>("api/Productos");
+
+        if(productos is not null)
+        {
+            L_Productos = productos;
+        }
+    }
+
+    public async Task Buscar()
+    {
+        L_Productos = await httpClient.GetFromJsonAsync<List<Productos>>($"api/productos");
+
+        Conteo = L_Productos != null ? L_Productos!.Count() : 0;
+        StateHasChanged();
+    }
+}

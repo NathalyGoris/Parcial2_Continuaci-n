@@ -72,9 +72,9 @@ public class EntradasController : ControllerBase
                 _context.Entry(producto).State = EntityState.Modified;
             }
 
-            var EntradaAnterior = _context.Productos.Find(entradaAnterior.ProductoId);
-            EntradaAnterior.Existencia -= entradaAnterior.CantidadProducida;
-            _context.Entry(EntradaAnterior).State = EntityState.Modified;
+            var productoEntradaAnterior = _context.Productos.Find(entradaAnterior.ProductoId);
+            productoEntradaAnterior.Existencia -= entradaAnterior.CantidadProducida;
+            _context.Entry(productoEntradaAnterior).State = EntityState.Modified;
             _context.Database.ExecuteSqlRaw($"Delete from EntradasDetalles where EntradaId = {entradas.EntradaId}");
 
             foreach (var consumido in entradas.EntradasDetalle)
@@ -85,9 +85,9 @@ public class EntradasController : ControllerBase
                 _context.Entry(consumido).State = EntityState.Added;
             }
 
-            var EntradaActual = _context.Productos.Find(entradas.ProductoId);
-            EntradaActual.Existencia += entradas.CantidadProducida;
-            _context.Entry(EntradaActual).State = EntityState.Modified;
+            var productoEntradaActual = _context.Productos.Find(entradas.ProductoId);
+            productoEntradaActual.Existencia += entradas.CantidadProducida;
+            _context.Entry(productoEntradaActual).State = EntityState.Modified;
             _context.Entradas.Update(entradas);
         }
 
@@ -97,7 +97,7 @@ public class EntradasController : ControllerBase
     }
 
 
-    [HttpDelete("{id}")]
+    [HttpDelete("{idd}")]
     public async Task<IActionResult> EliminarEntrada(int EntradaId)
     {
         var entrada = await _context.Entradas.Include(e => e.EntradasDetalle).FirstOrDefaultAsync(e => e.EntradaId == EntradaId);
@@ -109,21 +109,21 @@ public class EntradasController : ControllerBase
 
         foreach (var detalle in entrada.EntradasDetalle)
         {
-            var productos = await _context.Productos.FindAsync(detalle.ProductoId);
+            var producto = await _context.Productos.FindAsync(detalle.ProductoId);
 
-            if (productos != null)
+            if (producto != null)
             {
-                productos.Existencia += (int)detalle.CantidadUtilizada;
-                _context.Productos.Update(productos);
+                producto.Existencia += (int)detalle.CantidadUtilizada;
+                _context.Productos.Update(producto);
             }
         }
 
-        var producto = await _context.Productos.FindAsync(entrada.ProductoId);
+        var productoPrincipal = await _context.Productos.FindAsync(entrada.ProductoId);
 
-        if (producto != null)
+        if (productoPrincipal != null)
         {
-            producto.Existencia += entrada.CantidadProducida;
-            _context.Productos.Update(producto);
+            productoPrincipal.Existencia += entrada.CantidadProducida;
+            _context.Productos.Update(productoPrincipal);
         }
 
         _context.Entradas.Remove(entrada);

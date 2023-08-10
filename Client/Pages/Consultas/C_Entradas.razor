@@ -8,15 +8,14 @@
     <div class="container">
         <div class="card shadow-lg">
             <div class="card-header">
-                <h4>Consulta de Tickets</h4>
+                <h4>Consulta de Entradas</h4>
             </div>
 
             <div class="card-body">
                 <div class="input-group mb-3">
                     <InputText @bind-Value="Asunto" class="form-control" aria-describedby="buscarButton" />
-                    <button @onclick="Buscar" class="btn btn-outline-primary" type="button" id="buscarButton">
-                        <i class="oi oi-magnifying-glass" />
-                    </button>
+                    <button type="button" class="btn btn-sm-10 btn-primary" @onclick="Buscar"> 
+                    <span class="oi oi-magnifying-glass"></span> Buscar </button>
                 </div>
 
                 <table class="table table-responsive table-condensed table-bordered table-striped table-hover">
@@ -36,7 +35,7 @@
                                 <td>@entrada.Fecha</td>
                                 <td>@entrada.Concepto</td>
                                 <td>@entrada.CantidadProducida</td>                                
-                                <td><a class="btn btn-outline-primary" href="RegistroEntradas/@entradas.EntradaId">Ver</a></td>
+                                <td><a href="RegistroEntradas/@entradas.EntradaId">Ver</a></td>
                             </tr>
                         }
                     </tbody>
@@ -77,5 +76,6 @@
 
         Conteo = L_Entradas != null ? L_Entradas!.Count() : 0;
         StateHasChanged();
+
     }  
 }
