@@ -23,7 +23,7 @@ public class EntradasController : ControllerBase
         return await _context.Entradas.ToListAsync();
     }
 
-    [HttpGet("{id}")]
+    [HttpGet("{Id}")]
 
         public async Task<ActionResult<Entradas>> GetEntradas(int id)
         {
@@ -97,7 +97,7 @@ public class EntradasController : ControllerBase
     }
 
 
-    [HttpDelete("{idd}")]
+    [HttpDelete("{EntradaId}")]
     public async Task<IActionResult> EliminarEntrada(int EntradaId)
     {
         var entrada = await _context.Entradas.Include(e => e.EntradasDetalle).FirstOrDefaultAsync(e => e.EntradaId == EntradaId);
@@ -130,5 +130,5 @@ public class EntradasController : ControllerBase
         await _context.SaveChangesAsync();
 
         return NoContent();
+        }
     }
-}

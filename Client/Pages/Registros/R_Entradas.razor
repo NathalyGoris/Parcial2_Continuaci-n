@@ -35,21 +35,21 @@
                 <div class="row">
                     <div class="col-md-6">
                         <label>Producto:</label>
-                        <InputSelect @bind-Value="EntradasDetalle.ProductoId" class="form-select">
+                        <InputSelect @bind-Value="detalle.ProductoId" class="form-select">
                             <option value="@Entradas.ProductoId" hidden="hidden">Seleccione un producto</option>
                             @foreach (var item in L_Productos)
                             {
                                 <option value="@item.ProductoId">@item.Descripcion</option>
                             }
                         </InputSelect>
-                        <ValidationMessage For="@(() => EntradasDetalle.ProductoId)" />
+                        <ValidationMessage For="@(() => detalle.ProductoId)" />
                     </div>
                     <div class="col-md-5">
                         <label>Cantidad</label>
                         <div class="input-group">
-                            <InputNumber @bind-Value="EntradasDetalle.CantidadUtilizada" class="form-control"></InputNumber>
+                            <InputNumber @bind-Value="detalle.CantidadUtilizada" class="form-control"></InputNumber>
                             <button type="button" class="btn btn-dark" @onclick="AgregarDetalle">Agregar <i class="oi oi-plus"></i></button>
-                            <ValidationMessage For="@(() => EntradasDetalle.CantidadUtilizada)" />
+                            <ValidationMessage For="@(() => detalle.CantidadUtilizada)" />
                         </div>
                     </div>
                 </div>
@@ -93,14 +93,21 @@
                 <div class="row">
                     <div class="col-3">
                         <select @bind="Entradas.ProductoId" class="form-control">
-                            @foreach (var item in L_Productos)
+                            @if(L_Productos != null)
                             {
-                                <option value="@item.ProductoId">@item.Descripcion</option>
+                                if(Entradas.ProductoId <= 0)
+                                {
+                                    Entradas.ProductoId = 1;
+                                }
+                                @foreach (var item in L_Productos)
+                                {
+                                    <option value="@item.ProductoId">@item.Descripcion</option>
+                                }
                             }
                         </select>
                     </div>
                     <div class="col-2">
-                        <input disabled @bind-value="Entradas.CantidadProducida" class="form-control" placeholder="Cantidad Producida" />
+                        <input @bind-value="Entradas.CantidadProducida" class="form-control" placeholder="Cantidad Producida" />
                     </div>
                 </div>
             </div>
@@ -128,7 +135,7 @@
     public int EntradaId { get; set; }
     public int productoId { get; set; }
     public Entradas Entradas { get; set; } = new Entradas();
-    public EntradasDetalle EntradasDetalle { get; set; } = new EntradasDetalle();
+    public EntradasDetalle detalle { get; set; } = new EntradasDetalle();
     public List<Productos> L_Productos { get; set; } = new List<Productos>();
     public int Total { get; set; } = 0;
     public int Cantidad { get; set; }
@@ -145,7 +152,7 @@
         if(EntradaId > 0)
         {
             this.Entradas.EntradaId = EntradaId;
-            this.Buscar();
+            await this.Buscar();
         }
     }
     public void Nuevo()
@@ -159,7 +166,7 @@
         Total = 0;
         notificationServices.ShowNotification(titulo: "Listo", mensaje: "Se ha limpiado correctamente", NotificationSeverity.Info);
     }
-     public async Task Buscar()
+    public async Task Buscar()
     {
         try
         {
@@ -205,45 +212,70 @@
 
     public bool Validar()
     {
+        bool validar = true;
         if (string.IsNullOrEmpty(Entradas.Concepto))
         {
-            return false;
+            notificationServices.ShowNotification(
+                titulo: "Error",
+                mensaje: "El concepto es un campo necesario.",
+            NotificationSeverity.Error);
+            validar = false;
         }
-        if (Entradas.PesoTotal < 0)
+        if (Entradas.ProductoId <= 0)
         {
-            return false;
+            notificationServices.ShowNotification(
+                titulo: "Error",
+                mensaje: "Es necesario seleccionar un producido",
+            NotificationSeverity.Error);
+            validar = false;
         }
-        if (Entradas.ProductoId < 0)
+        if (Entradas.CantidadProducida <= 0)
         {
-            return false;
+            notificationServices.ShowNotification(
+                titulo: "Error",
+                mensaje: "La cantidad producida no puede ser menor o igual a 0",
+            NotificationSeverity.Error);
+            validar = false;
         }
-        if (Entradas.CantidadProducida < 0)
+        if(Entradas.EntradasDetalle.Count < 1)
         {
-            return false;
+            notificationServices.ShowNotification(
+                titulo: "Error",
+                mensaje: "Debe agregar al menos un detalle.",
+            NotificationSeverity.Error);
+            validar = false;
         }
-        else
-        {
-            return true;
-        }
+
+        return validar;
     }
-     public bool ValidarDetalle()
+
+    public bool ValidarDetalle()
     {
-        if (EntradasDetalle.ProductoId < 0)
+        bool validar = true;
+        if (detalle.ProductoId < 0)
         {
-            return false;
+            notificationServices.ShowNotification(
+                titulo: "Error",
+                mensaje: "Para guardar el detalle es necesario seleccionar un producto",
+            NotificationSeverity.Error);
+            validar = false;
         }
-        if (EntradasDetalle.CantidadUtilizada < 0)
+        if (detalle.CantidadUtilizada <= 0)
         {
-            return false;
+            notificationServices.ShowNotification(
+                titulo: "Error",
+                mensaje: "La cantidad debe ser mayor a 0",
+            NotificationSeverity.Error);
+            validar = false;
         }
-        else
-        {
-            return true;
-        }
+
+        return validar;
     }
 
     public async Task Guardar()
     {
+        if(!Validar()) { return; }
+        
         try
         {
             using var response = await httpClient.PostAsJsonAsync("api/Entradas", Entradas);
@@ -257,6 +289,7 @@
                     mensaje: "Guardado correctamente",
                     NotificationSeverity.Success);
                 this.Entradas = entradaDevuelta;
+                Nuevo();
             }
         }
         catch (Exception ex)
@@ -272,9 +305,6 @@
     public async Task Eliminar()
     {
         using var response = await httpClient.DeleteAsync($"api/Entradas/{Entradas.EntradaId}");
-
-        if (Validar())
-        {
             if (!response.IsSuccessStatusCode)
             {
 
@@ -286,9 +316,12 @@
             }
             else
             {
+                notificationServices.ShowNotification(
+                    titulo: "Éxito",
+                    mensaje: "Se ha eliminado con exito",
+                    NotificationSeverity.Error);
                 Nuevo();
             }
-        }
     }
    
    public void EliminarDetalle(EntradasDetalle entradasDetalle)
@@ -303,7 +336,7 @@
     {
         if (ValidarDetalle())
         {
-            if (EntradasDetalle.CantidadUtilizada <= 0)
+            if (detalle.CantidadUtilizada <= 0)
             {
                 notificationServices.ShowNotification(
                 titulo: "Error", 
@@ -312,13 +345,13 @@
                 return;
             }
 
-            var producto = await BuscarEntradas(EntradasDetalle.ProductoId);
+            var producto = await BuscarEntradas(detalle.ProductoId);
 
             if (Entradas != null)
             {
                 int Suma = 0;
 
-                if (EntradasDetalle.CantidadUtilizada > producto.Existencia)
+                if (detalle.CantidadUtilizada > producto.Existencia)
                 {
                     notificationServices.ShowNotification(
                     titulo: "Error", 
@@ -327,9 +360,9 @@
                     return;
                 }
 
-                EntradasDetalle.EntradaId = Entradas.EntradaId;
-                Entradas.EntradasDetalle.Add(EntradasDetalle);
-                EntradasDetalle = new EntradasDetalle();
+                detalle.EntradaId = Entradas.EntradaId;
+                Entradas.EntradasDetalle.Add(detalle);
+                detalle = new EntradasDetalle();
 
                 foreach (var item in Entradas.EntradasDetalle)
                 {
